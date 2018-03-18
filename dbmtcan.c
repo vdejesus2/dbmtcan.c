@@ -4,15 +4,14 @@
 
 /*Program notes:
 
-Version 10.0
-working on merge function
+Version 16.0
+working on merge function.
 
-version 9
-compiles, executes and outputs all files but the first in gdb. 
-(had problems when running ./a.out infile.txt oufile 11
+version 15
+no bugs, merge function not finished, format functions complete.
 
 run with: 
-"gdb --args a.out infile.txt outfile 11"
+"./a.out infile.txt outfile 11 epsmin mnpnts"
 
 compile with: 
 "gcc dbmtcanv9.c -lm -lpthread"
@@ -51,6 +50,7 @@ pthread_mutex_t lock;
 int datagrabber(FILE *fptr, double *storage);
 void* scann(void *);
 void mrgCluster(char fileNames[][100],int numOfiles);
+void filenames(char cluster[],double *values);
 
  
 int main(int argc, char *argv[]){
@@ -120,7 +120,7 @@ int main(int argc, char *argv[]){
                 outPtr = fopen(argv[2],"w+");
                 if(!outPtr)
 		{ //if error appending
-                        perror("File could not opened for writing:");
+                        perror("File could not be opened for writing:");
                         exit(1);
                 }
 	}
@@ -304,7 +304,7 @@ void* scann(void *jobs)
                 printf("i= %d size= %d current point=(%.02lf,%.02lf)\n",i,sizes,x,y);
 		if(distance < epsmin)
                 {
-                        fprintf(fiptr,"x(%lf),y(%lf) -> x'(%lf),y'(%lf) = %lf\n",x,y,x2,y2,distance);
+                        fprintf(fiptr,"x(%0.0lf),y(%0.0lf) -> x'(%0.0lf),y'(%0.0lf) = %lf\n",x,y,x2,y2,distance);
                         printf("x(%.02lf),y(%.02lf) -> x'(%.02lf),y'(%.02lf) = %.03lf\n",x,y,x2,y2,distance);
                 	pointcount++;
 		}
@@ -339,88 +339,122 @@ void* scann(void *jobs)
 
 void mrgCluster(char fileNames[][100],int numOfiles)
 {
-		puts("Merge started...\n");
-		int i,j=0,b=0,clstpts=0;
-		char c;
-		double k,l,tempk=0,templ=0;
-		char cluster[100];
-		char clusterb[100];
-//file format d_dfilename_d
-		for(i=0;i<numOfiles;i++)
-		{
-//			cluster= fileNames[i];			
-			strcpy(cluster,fileNames[i]);
-			printf("cluster name= %s\n",cluster);
-			//need to add number of points in file cluster
-			//will be the number of times to run next loop.
-				
-			while( (c= cluster[j]) != '\0')
-			{
-        	        	if(c=='_')
-                		{
-                        		b++;
-                        		j++;
-					printf("j=_ %d\n",j);
-                		}
-                		else if(isalpha(c))
-				{
-                        		j++;
-					printf("j= %d\n",j);
-                		}
-				else if(isdigit(c))
-				{
-					if(b==0)
-					{
-						tempk= (double)c - '0';	
-						//need recursion here xx.xx
-						while ((c= cluster[++j]) != '\0')
-						{
-							if(c=='_')
-			                        	{
-                        			        	b++;
-								j++;
-                                				printf("j=__ %d b= %d\n",j,b);
-								break;
-                        				}
-                        				else if(isalpha(c))
-							{
-								puts("wrong file format-> dd_ddfilename_dd");
-								printf("b= %d\n",b);
-								break;
-							}
-							else if(isdigit(c))
-							{
-								tempk= tempk*10;
-								tempk= tempk + ((double)c - '0');
-							}
-							else
-								break;
-						}
+	puts("Merge started...\n");
+	FILE *master;
+	FILE *slave;
+	int i,h,hnd=0;
+	double handoff[3]={0};
+	char c;
+	double k,l,clstptsA,tempk, templ, clstptsB;
+	char clusterc[100];
+	char clusterb[100];
+//file format d_dfilename_dd
+		
+	for(h=0;h<numOfiles;h++)
+	{
+		strcpy(clusterb,fileNames[h++]);
+		filenames(clusterb,handoff);
+		k = handoff[0];
+		l = handoff[1];
+		clstptsA = handoff[2];	
+		strcpy(clusterc,fileNames[h]);
+                //retrieve dd_ddcluster and # of points in cluster
+		filenames(clusterc,handoff); 
+		tempk = handoff[0];
+                templ = handoff[1];
+                clstptsB = handoff[2];
 
-					}
-					else if(b==1)
-					{
+		printf("tempk= %.2lf\n",tempk);
+		printf("templ= %.2lf\n",templ);
+		printf("clstpts= %.2lf\n",clstptsB);
+			
+		master = fopen(clusterb,"a");
+		if(!master)
+        	{ //if error appending
+                	perror("File could not open for writing:");
+                	exit(1);
+        	}
+			
+		tempk=0;
+		templ=0;
+		clstptsB=0;
+		//need to go to next file and compare name to see
+		//if point is in file name.
+	}
+}
+
+void filenames(char cluster[],double *values)
+{
+	int j=0,b=0;
+	double templ=0, tempk=0, clstpts=0;
+	char c;
+	while( (c= cluster[j]) != '\0')
+                        {
+                                if(c=='_')
+                                {
+                                        b++;
+                                        j++;
+//                                      printf("j=_ %d\n",j);           //debugging
+                                }
+                                else if(isalpha(c))
+                                {
+                                        j++;
+//                                      printf("j= %d\n",j);            //debugging
+                                }
+                                else if(isdigit(c))
+                                {
+                                        if(b==0)
+                                        {
+                                                tempk= (double)c - '0';
+                                                //need recursion here xx.xx
+                                                while ((c= cluster[++j]) != '\0')
+                                                {
+                                                        if(c=='_')
+                                                        {
+                                                                b++;
+                                                                j++;
+//                                                              printf("j=__ %d b= %d\n",j,b);          //debugging
+                                                                break;
+                                                        }
+                                                        else if(isalpha(c))
+                                                        {
+                                                                puts("wrong file format-> dd_ddfilename_dd");
+//                                                              printf("b= %d\n",b);            //debugging
+                                                                break;
+                                                        }
+                                                        else if(isdigit(c))
+                                                        {
+                                                                tempk= tempk*10;
+                                                                tempk= tempk + ((double)c - '0');
+                                                        }
+                                                        else
+                                                                break;
+                                                }
+
+                                        }
+                                        else if(b==1)
+                                        {
 						templ= (double)c - '0';
-//						printf("templ= %.2lf\n",templ);		//debugging
-						//need recursion here xx.xx
-					 	while ((c= cluster[++j]) != '\0')
-                                        	{
-							if(isalpha(c))
-							{
-								break;
-							}
-                                                	else if(isdigit(c))
-                                                	{
-                                                        	templ= templ*10;
-                                                        	templ= templ + ((double)c - '0');
-                                                	}
-                                                	else
-                                                        	break;
-                                        	}
-					}
-					else if(b==2)
-					{
-						clstpts= (double)c - '0';
+//                                              printf("templ= %.2lf\n",templ);         //debugging
+                                                //need recursion here xx.xx
+                                                while ((c= cluster[++j]) != '\0')
+                                                {
+                                                        if(isalpha(c))
+                                                        {
+                                                                break;
+                                                        }
+                                                        else if(isdigit(c))
+                                                        {
+                                                                templ= templ*10;
+                                                                templ= templ + ((double)c - '0');
+                                                        }
+                                                        else
+                                                                break;
+                                                }
+                                        }
+                                        else if(b==2)
+                                        {
+                                                clstpts= (double)c - '0';
 //                                              printf("templ= %.2lf\n",templ);         //debugging
                                                 //need recursion here xx.xx
                                                 while ((c= cluster[++j]) != '\0')
@@ -429,7 +463,7 @@ void mrgCluster(char fileNames[][100],int numOfiles)
                                                         {
                                                                 puts("wrong file format-> dd_ddfilename_dd");
                                                                 printf("j= %d b= %d\n",j,b);
-								break;
+                                                                break;
                                                         }
                                                         else if(isdigit(c))
                                                         {
@@ -439,28 +473,20 @@ void mrgCluster(char fileNames[][100],int numOfiles)
                                                         else
                                                                 break;
                                                 }
-	
-					}
-					else
-					{	
-						puts("");
-						printf("j= %d b= %d\n",j,b);
-						j++;
-					}		
-				}				
-//				printf("# of Points= %0.2lf\n",templ);		//debugging
-			}
-			j=0;
-			b=0;
-			printf("tempk= %.2lf\n",tempk);
-			printf("templ= %.2lf\n",templ);
-			printf("clstpts= %.2lf\n",clstpts);
-			tempk=0;
-			templ=0;
-			clstpts=0;
-			//need to go to next file and compare name to see
-			//if point is in file name.
-	}
+
+                                        }
+                                        else
+                                        {
+                                                puts("");
+                                                printf("j= %d b= %d\n",j,b);
+						         j++;
+                                        }
+                                }
+//                              printf("# of Points= %0.2lf\n",templ);          //debugging
+                        }
+			*values = tempk;
+			values++;
+			*values = templ;
+			values++;
+			*values = clstpts;
 }
-
-
