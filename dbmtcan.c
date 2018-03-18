@@ -349,17 +349,24 @@ void mrgCluster(char fileNames[][100],int numOfiles)
                 		{
                         		b=1;
                         		j++;
+					printf("j= %d\n",j);
                 		}
                 		else if(isalpha(c))
-                        		break;
-                		else if(isdigit(c))
+				{
+                        		j++;
+//					printf("j= %d\n",j);
+                		}
+				else if(isdigit(c))
 				{
 					if(b==0)
 					{
 						
-						break;
-/*				
-						tempk= (double)c - '0';
+						puts("");
+						j++;	
+/*						tempk= (double)c - '0';		//I think i was trying to capture
+										//the front and back of the filename.
+										//I need to capture core point value
+										//in filename. 
 						//need recursion here xx.xx
 						while ((c= cluster[++j]) != '\0')
 						{
@@ -398,6 +405,7 @@ void mrgCluster(char fileNames[][100],int numOfiles)
 					else if(b==1)
 					{
 						templ= (double)c - '0';
+//						printf("templ= %.2lf\n",templ);
 						//need recursion here xx.xx
 					 	while ((c= cluster[++j]) != '\0')
                                         	{
@@ -428,11 +436,16 @@ void mrgCluster(char fileNames[][100],int numOfiles)
                                         	}
 					}
 					else
-						break;
+					{	
+						puts("");
+						j++;
+					}		
 				}				
-				
-				printf("# of Points= %d",clstpts);
+//				printf("# of Points= %0.2lf\n",templ);		//debugging
 			}
+			j=0;
+			printf("templ= %.2lf\n",templ);
+			templ=0;
 			//need to go to next file and compare name to see
 			//if point is in file name.
 		}
