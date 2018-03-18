@@ -26,6 +26,7 @@ struct job{
 //        FILE *fileptr;
 	char *filename;
         double *jobstorage;
+	double *initmem;
         double EpsMin;
 	int MinPts;
         int elements;
@@ -33,6 +34,7 @@ struct job{
 
 
 pthread_mutex_t lock;
+
 int datagrabber(FILE *fptr, double *storage);
 void* scann(void *);
 
@@ -43,15 +45,21 @@ int main(int argc, char *argv[]){
         int check,i,G;
 	int tharg,tharg2,mnpts;
 	tharg= atoi(argv[3]);
-	double *memory;
+	double *memory, *initMem;
 	double EPSmin=0;
 	tharg2= 2*tharg;
-	char str1[20]="outfile";
+	char str1[20];
+	strcpy(str1,argv[2]);
 	char str2[20];
 	pthread_t tid[tharg];
 
 	int iret1, iret2;
-	
+	if (pthread_mutex_init(&lock, NULL) != 0)
+	{
+        	printf("\n mutex init failed\n");
+        	return 1;
+	}
+
 	char names[tharg][100];
 	for(i = 0; i < tharg; ++i )
     	{	
@@ -71,6 +79,7 @@ int main(int argc, char *argv[]){
 
 	
 	memory = calloc(tharg2, sizeof(double)+1);
+	initMem = &memory[0];
 	printf("arg3= %d\n",tharg);
         if(argc!=4)
 	{ //4 arguments check
@@ -92,7 +101,14 @@ int main(int argc, char *argv[]){
                         exit(1);
                 }
 	}
+	
 	check = datagrabber(inPtr,memory);
+	//check memory values
+	for(i=0;i<tharg2;i++)
+	{
+		printf("Mem= %.02lf\n",*(memory+i));
+	}
+	
 	if (check == tharg)
 		printf("check size match\n");
 	else if(check > tharg)
@@ -114,19 +130,22 @@ int main(int argc, char *argv[]){
 	
 	printf("Enter MinPoints: ");
         scanf("%d",&mnpts);
-	
+
 	struct job *jobptr = malloc(sizeof *jobptr);
+
+	
 	for(i=0;i< tharg;i++)
 	{
-
+		
 		if (jobptr != NULL)
 		{
 			puts("starting thread");
 			printf("i= %d threadname= %s\n",i,names[i]);
 			jobptr->filename = names[i];
 	        	jobptr->jobstorage = (memory+(2*i));
-	        	jobptr->EpsMin = EPSmin;
-	        	jobptr->elements = 2*(tharg-i);
+	        	jobptr->initmem = initMem;
+			jobptr->EpsMin = EPSmin;
+	        	jobptr->elements = 2*(tharg);
 			jobptr->MinPts = mnpts;
 			iret1 = pthread_create( &tid[i], NULL, scann, jobptr);
         		if(iret1)
@@ -140,6 +159,7 @@ int main(int argc, char *argv[]){
 	for(h=0;h<tharg;h++)
 	{
 		pthread_join(tid[h], NULL);
+	
 	}
 	puts("scan complete");	
 
@@ -147,6 +167,7 @@ int main(int argc, char *argv[]){
 	fclose(inPtr);
 	free (memory);
 	free (jobptr);
+	pthread_mutex_destroy(&lock);
 	return 0;
 }
 
@@ -193,16 +214,27 @@ int datagrabber(FILE *fptr, double *storage)
 void* scann(void *jobs)
 {
 	puts("thread going");
+	double x,y,x2,y2,distance,z, tempy, tempx, *temptr;
+        int i;
+
+	pthread_mutex_lock(&lock);
+
 	struct job *jobptr2 = jobs;	
 	
-	pthread_mutex_lock(&lock);
 //	FILE *fiptr=jobptr2->fileptr;
 	char *fname=jobptr2->filename;
 	double *storage2=jobptr2->jobstorage;
+	double *Initmem=jobptr2->initmem;
 	double epsmin=jobptr2->EpsMin;
 	int mnpoints=jobptr2->MinPts;
 	int sizes=jobptr2->elements;
-	pthread_mutex_unlock(&lock);
+	
+	pthread_mutex_unlock(&lock);	
+	x=*storage2;
+        printf("%.02f\n",x);
+        y=*(storage2+1);
+        printf("%.02f\n",y);
+
 	
 	printf("File name = %s\n",fname);	
 
@@ -216,33 +248,23 @@ void* scann(void *jobs)
 
 
 //	printf("storage2= %.02lf\n",*storage2);
-	double x,y,x2,y2,distance,z, tempy, tempx;
-        int i;
-	pthread_mutex_lock(&lock);	
 
-	x=*storage2;
-//        printf("%.02f\n",x);
-        y=*(storage2+1);
-//        printf("%.02f\n",y);
-	pthread_mutex_unlock(&lock);
-	
-        for(i=2;i <= (sizes-2);i++)
+	storage2 = Initmem; 
+        for(i=0;i < (sizes);(i+=2))
         {
-                pthread_mutex_lock(&lock);
 		x2=*(storage2+i);
 //                printf("%.02f\n",x2);
 		y2=*(storage2+(i+1));
 //                printf("%.02f\n",y2);
-		pthread_mutex_unlock(&lock);
 		
-		tempy= (y2-y);
-		tempx= (x2-x);
+		tempy= abs(y2-y);
+		tempx= abs(x2-x);
                 z= tempy*tempy+tempx*tempx;
-                printf("%.02f\n",z);
+//		printf("%.02f\n",z);
                 distance = sqrt(z);
-                printf("%.02f\n",distance);
-                printf("%.02f\n",epsmin);
-                printf("i= %d size= %d\n",i,sizes);
+//                printf("%.02f\n",distance);
+//                printf("%.02f\n",epsmin);
+                printf("i= %d size= %d current point=(%.02lf,%.02lf)\n",i,sizes,x,y);
 		if(distance < epsmin)
                 {
                         fprintf(fiptr,"x(%lf),y(%lf) -> x'(%lf),y'(%lf) = %lf\n",x,y,x2,y2,distance);
