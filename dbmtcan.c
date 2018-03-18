@@ -51,7 +51,7 @@ int datagrabber(FILE *fptr, double *storage);
 void* scann(void *);
 void mrgCluster(char fileNames[][100],int numOfiles);
 void filenames(char cluster[],double *values);
-
+void appendFile(char fileA[100], char fileB[100]);
  
 int main(int argc, char *argv[]){
         FILE *inPtr;    //pointer for file that is read from
@@ -304,8 +304,8 @@ void* scann(void *jobs)
                 printf("i= %d size= %d current point=(%.02lf,%.02lf)\n",i,sizes,x,y);
 		if(distance < epsmin)
                 {
-                        fprintf(fiptr,"x(%0.0lf),y(%0.0lf) -> x'(%0.0lf),y'(%0.0lf) = %lf\n",x,y,x2,y2,distance);
-                        printf("x(%.02lf),y(%.02lf) -> x'(%.02lf),y'(%.02lf) = %.03lf\n",x,y,x2,y2,distance);
+                        fprintf(fiptr,"x(%0.0lf),y(%0.0lf) -> x_(%0.0lf),y_(%0.0lf) = %lf\n",x,y,x2,y2,distance);
+                        printf("x(%.02lf),y(%.02lf) -> x_(%.02lf),y_(%.02lf) = %.03lf\n",x,y,x2,y2,distance);
                 	pointcount++;
 		}
         }
@@ -345,7 +345,8 @@ void mrgCluster(char fileNames[][100],int numOfiles)
 	puts("Merge started...\n");
 	FILE *master;
 	FILE *slave;
-	int i,h,hnd=0;
+	int i,h,j,hnd=0;
+	double p1,p2;
 	double handoff[3]={0};
 	char c;
 	double k,l,clstptsA,tempk, templ, clstptsB;
@@ -360,38 +361,94 @@ void mrgCluster(char fileNames[][100],int numOfiles)
 		k = handoff[0];
 		l = handoff[1];
 		clstptsA = handoff[2];	
-		//printf("%s\n",clusterc);
-		strcpy(clusterc,fileNames[h]);
- 		printf("%s\n",clusterc);
-                //retrieve dd_ddcluster and # of points in cluster
-		filenames(clusterc,handoff); 
-		tempk = handoff[0];
-                templ = handoff[1];
-                clstptsB = handoff[2];
-
-		printf("tempk= %.2lf\n",tempk);
-		printf("templ= %.2lf\n",templ);
-		printf("clstpts= %.2lf\n",clstptsB);
-			
-		master = fopen(clusterb,"a");
-		if(!master)
-        	{ //if error appending
-                	perror("File could not open for writing:");
-                	exit(1);
-        	}
-		slave = fopen(clusterc,"r");
-                if(!slave)
+		printf("This %s\n",clusterb);
+		master = fopen(clusterb,"r+");
+                if(!master)
                 { //if error appending
-                        perror("File could not open for writing:");
+                        perror("File could not open for reading:");
                         exit(1);
                 }
-//WE ARE HERE!!		
-		//need to go to next file and compare name to see
-		//if point is in file name.
-	
-		tempk=0;
-		templ=0;
-		clstptsB=0;
+		printf("about to start while\n");
+		
+//WE ARE HERE-------->>>>>>>> while loop does not start?
+
+		while((c=fgetc(master)) != EOF)
+		{
+                	printf("start = %c\n",c);
+			if(c=='\n')
+                        {
+                	        p1 = 0;
+                        	p2 = 0;
+                        }
+                        else if(c=='x')
+                        {
+                        	printf("step 1 = %c\n",c);
+				c=fgetc(master);
+                                if (c == '_')
+                                {
+                                	c=fgetc(master);
+					c = fgetc(master);
+                                        printf("step 2 = %c\n",c);
+					p1 = (double)c - '0';
+                                        c=fgetc(master);
+                                        if (isdigit(c))
+                                        {
+                                        	p1 = 10*p1 + ((double)c - '0');
+                                        }
+                                                //need recursion to go higher than double digits
+                                }
+			}
+                        else if(c=='y')
+                        {
+                        	c=fgetc(master);
+                                printf("step 3 = %c\n",c);
+				if (c == '_')
+                                {
+                                	c = fgetc(master);
+                                        c = fgetc(master);
+					printf("step 4 = %c\n",c);
+					p2 = (double)c - '0';
+                                        c=fgetc(master);
+                                        if (isdigit(c))
+                                        {
+                                        	p2 = 10*p2 + ((double)c - '0');
+                                        }
+                                                //need recursion to go higher than double digits
+				}
+				printf("p1=%f p2=%f\n",p1,p2);
+				for(j=h;j<(numOfiles-h);j++)
+                		{
+                        		strcpy(clusterc,fileNames[j]);
+                        		printf("%s\n",clusterc);
+                        		//retrieve dd_ddcluster and # of points in cluster
+                        		filenames(clusterc,handoff);
+                        		tempk = handoff[0];
+                        		templ = handoff[1];
+                        		clstptsB = handoff[2];
+
+                        		printf("tempk= %.2lf\n",tempk);
+                        		printf("templ= %.2lf\n",templ);
+                        		printf("clstpts= %.2lf\n",clstptsB);
+
+                        		//need to go to next file and compare name to see
+                        		//if point is in file name.
+
+                        		tempk=0;
+                        		templ=0;
+                        		clstptsB=0;
+                			
+                                	if((p1 == tempk) && (p2 == templ))
+                                	{
+                                	//	appendFile(clusterb,clusterc);
+                                	}
+				}
+
+			}
+                        else
+                        {
+                        	printf("step else = %c\n",c);
+                        }
+		}		
 	}
 }
 
@@ -501,4 +558,18 @@ void filenames(char cluster[],double *values)
 			*values = templ;
 			values++;
 			*values = clstpts;
+}
+
+void appendFile(char fileA[100], char fileB[100])
+{
+	printf("Starting system call");	
+	char systemCall[255];
+	char commands[10]="cat ";
+	strcat(systemCall,commands);
+	strcat(systemCall,fileA);
+	strcpy(commands," >> ");
+	strcat(systemCall,commands);
+	strcat(systemCall,fileB);
+	printf("%s\n",systemCall);
+	system(systemCall);
 }
