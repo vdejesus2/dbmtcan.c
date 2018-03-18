@@ -7,8 +7,17 @@
 #include <math.h>
 #include <pthread.h>
 
+struct job{
+        FILE *fileptr;
+        double *jobstorage;
+        double EpsMin;
+        int elements;
+};
+
+
+
 int datagrabber(FILE *fptr, double *storage);
-void scann(FILE *fiptr, double *storage2, double epsmin,int sizes);
+void* scann(void *);
 
  
 int main(int argc, char *argv[]){
@@ -20,6 +29,11 @@ int main(int argc, char *argv[]){
 	double *memory;
 	double EPSmin=0;
 	tharg2= 2*tharg;
+	
+	pthread_t thread1, thread2;
+	int iret1, iret2;
+
+
 	memory = calloc(tharg2, sizeof(double));
 	printf("arg3= %d\n",tharg);
         if(argc!=4)
@@ -62,11 +76,37 @@ int main(int argc, char *argv[]){
 	printf("Enter EPSmin: ");
 	scanf("%lf",&EPSmin);
 	//printf("memory[0]= %lf\n",*memory); //error check
-	scann(outPtr,memory,EPSmin,(check*2));		
-	puts("scan complete");
+	//scann(outPtr,memory,EPSmin,(check*2));		
+/*	
+	struct job{
+        FILE *fileptr;
+        double *jobstorage;
+        double EpsMin;
+        int elements;
+	};
+*/
+	
+	struct job *jobptr = malloc(sizeof *jobptr);
+
+	if (jobptr != NULL)
+	{
+		puts("starting thread");
+		jobptr->fileptr = inPtr;
+	        jobptr->jobstorage = memory;
+	        jobptr->EpsMin = EPSmin;
+	        jobptr->elements = tharg2;
+		iret1 = pthread_create( &thread1, NULL, scann, jobptr);
+        	if(iret1)
+        	{
+                	fprintf(stderr, "Error - pthread_create() return code: %d\n",iret1);
+                	exit(EXIT_FAILURE);
+        	}
+	}
+
+	puts("scan complete");	
         fclose(outPtr); //closes write file
 	fclose(inPtr);
-	free (memory);
+//	free (memory);
         return 0;
 }
 
@@ -85,7 +125,7 @@ int datagrabber(FILE *fptr, double *storage)
 		else if(c==',')
                         j++;
                 else
-		{
+		{	//need to create recursion here.
 			temp = (double)c - '0';
 			c=fgetc(fptr);
 			if(c=='\n')
@@ -110,14 +150,16 @@ int datagrabber(FILE *fptr, double *storage)
 	return i;
 }
 
-/*
-void threadtest(void)
+void* scann(void *jobs)
 {
-int pthread_create(pthread_t * pth, pthread_attr_t *att, void * (*function), void * arg);
-}
-*/
-void scann(FILE *fiptr, double *storage2, double epsmin, int sizes)
-{
+	puts("thread going");
+	struct job *jobptr2 = jobs;	
+
+	FILE *fiptr=jobptr2->fileptr;
+	double *storage2=jobptr2->jobstorage;
+	double epsmin=jobptr2->EpsMin;
+	int sizes=jobptr2->elements;
+	
 	printf("storage2= %.02lf\n",*storage2);
 	double x,y,x2,y2,distance,z;
         int i;
@@ -146,5 +188,7 @@ void scann(FILE *fiptr, double *storage2, double epsmin, int sizes)
                 }
         }
 	
+	free(storage2);
+	free(jobs);	
 	fclose(fiptr); //closes write file
 }	
