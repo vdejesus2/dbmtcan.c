@@ -58,7 +58,7 @@ int main(int argc, char *argv[]){
         FILE *outPtr;   //pointer for file that is written to
         int check,i,G;
 	int tharg,tharg2;
-	int mnpts = atoi(argv[5]);;
+	int mnpts = atoi(argv[5]);
 	tharg= atoi(argv[3]);
 	
 	double *memory, *initMem;
@@ -86,13 +86,13 @@ int main(int argc, char *argv[]){
 	char names[tharg][100];
 	for(i = 0; i < tharg; ++i )
     	{	
-		char *string;
-                asprintf(&string,"%d",i);
+//		char *string;
+//                asprintf(&string,"%d",i);
 //                printf("%s\n", string);	//debugging
-		strcat(string,str1);
-		strcpy(names[i],string);
+//		strcat(string,str1);
+		strcpy(names[i],str1);
 //		printf("%s\n",names[i]);	//debugging
-		free (string);
+//		free (string);
 	}
 
 	for (i=0;i<tharg;i++)
@@ -263,11 +263,20 @@ void* scann(void *jobs)
         y=*(storage2+1);
         printf("%.02f\n",y);
 
-	
-	printf("File name = %s\n",fname);	
+        char *stringx;
+        char *stringy;
+        char tempchar='_';
+        asprintf(&stringx, "%0.0lf", x);
+        asprintf(&stringy, "%0.0lf", y);
+        char oldname[PATH_MAX];
 
+        strcpy(oldname,stringx);
+	strcat(oldname,"_");
+        strcat(oldname,stringy);
+        strcat(oldname,fname);
+        printf("%s\n", oldname);
 
-	FILE *fiptr = fopen(fname,"w");
+	FILE *fiptr = fopen(oldname,"w");
         if(!fiptr)
         { //if error appending
         	perror("File could not open for writing:");
@@ -305,14 +314,14 @@ void* scann(void *jobs)
 //function to add number of points to the end of the filename.
 	int ret;
 	char *stringb;
+	char newname[PATH_MAX];
         printf("mnpts= %d currentPts= %d\n",mnpoints,pointcount);
 	asprintf(&stringb, "%d", pointcount);
         printf("%s\n", stringb);
-        char oldname[PATH_MAX];
-	strcpy(oldname,fname);
-	strcat(fname, stringb);
-	printf("%s\n", fname);
-	ret = rename(oldname, fname);
+	strcpy(newname,oldname);
+	strcat(newname, stringb);
+	printf("%s\n", newname);
+	ret = rename(oldname, newname);
 	if(ret == 0) 
 	{
 		printf("File renamed successfully\n");
@@ -321,20 +330,22 @@ void* scann(void *jobs)
    	{
      		printf("\nError: unable to rename the file\n");
    	}
+	strcpy(fname, newname);
 	free (stringb);
-
+	free (stringx);
+	free (stringy);
 }
 
 
 void mrgCluster(char fileNames[][100],int numOfiles)
 {
 		puts("Merge started...\n");
-		int i,j=0,b=0,clstpts;
+		int i,j=0,b=0,clstpts=0;
 		char c;
-		double k,l,tempk,templ;
+		double k,l,tempk=0,templ=0;
 		char cluster[100];
 		char clusterb[100];
-
+//file format d_dfilename_d
 		for(i=0;i<numOfiles;i++)
 		{
 //			cluster= fileNames[i];			
@@ -344,10 +355,9 @@ void mrgCluster(char fileNames[][100],int numOfiles)
 			//will be the number of times to run next loop.
 				
 			while( (c= cluster[j]) != '\0')
-			{
         	        	if(c=='_')
                 		{
-                        		b=1;
+                        		b++;
                         		j++;
 					printf("j= %d\n",j);
                 		}
@@ -360,10 +370,8 @@ void mrgCluster(char fileNames[][100],int numOfiles)
 				{
 					if(b==0)
 					{
-						
-						puts("");
 						j++;	
-/*						tempk= (double)c - '0';		//I think i was trying to capture
+						tempk= (double)c - '0';		//I think i was trying to capture
 										//the front and back of the filename.
 										//I need to capture core point value
 										//in filename. 
@@ -372,24 +380,12 @@ void mrgCluster(char fileNames[][100],int numOfiles)
 						{
 							if(c=='_')
 			                        	{
-                        			        	b=1;
+                        			        	b++;
                                 				break;
                         				}
                         				else if(isalpha(c))
 							{
-                                				b==3;
-								while ((c= cluster[++j]) != '\0')
-                                                		{
-                                                        		if(isalpha(c))
-                                                                		break;
-                                                        		else if(isdigit(c))
-                                                        		{
-										clstpts=((double)c - '0');
-                                                        		}
-                                                        		else
-                                                                		break;
-                                                		}
-
+								puts("wrong file format-> dd_ddfilename_dd");
 								break;
 							}
 							else if(isdigit(c))
@@ -400,31 +396,19 @@ void mrgCluster(char fileNames[][100],int numOfiles)
 							else
 								break;
 						}
-*/
+
 					}
 					else if(b==1)
 					{
 						templ= (double)c - '0';
-//						printf("templ= %.2lf\n",templ);
+//						printf("templ= %.2lf\n",templ);		//debugging
 						//need recursion here xx.xx
 					 	while ((c= cluster[++j]) != '\0')
                                         	{
-                                                	if(isalpha(c))
+							if(isalpha(c))
 							{
-								b==3;
-                                                                while ((c= cluster[++j]) != '\0')
-                                                                {
-                                                                        if(isalpha(c))
-                                                                                break;
-                                                                        else if(isdigit(c))
-                                                                        {
-                                                                                clstpts=((double)c - '0');
-                                                                        }
-                                                                        else
-                                                                                break;
-                                                                }
-
-                                                        	break;
+                                                        	b++;
+								break;
 							}
                                                 	else if(isdigit(c))
                                                 	{
@@ -435,6 +419,28 @@ void mrgCluster(char fileNames[][100],int numOfiles)
                                                         	break;
                                         	}
 					}
+					else if(b==2)
+					{
+						clstpts= (double)c - '0';
+//                                              printf("templ= %.2lf\n",templ);         //debugging
+                                                //need recursion here xx.xx
+                                                while ((c= cluster[++j]) != '\0')
+                                                {
+                                                        if(isalpha(c))
+                                                        {
+                                                                puts("wrong file format-> dd_ddfilename_dd");
+                                                                break;
+                                                        }
+                                                        else if(isdigit(c))
+                                                        {
+                                                                clstpts= clstpts*10;
+                                                                clstpts= clstpts + ((double)c - '0');
+                                                        }
+                                                        else
+                                                                break;
+                                                }
+	
+					}
 					else
 					{	
 						puts("");
@@ -444,10 +450,15 @@ void mrgCluster(char fileNames[][100],int numOfiles)
 //				printf("# of Points= %0.2lf\n",templ);		//debugging
 			}
 			j=0;
+			b=0;
+			printf("tempk= %.2lf\n",tempk);
 			printf("templ= %.2lf\n",templ);
+			printf("clstpts= %.2lf\n",clstpts);
+			tempk=0;
 			templ=0;
+			clstpts=0;
 			//need to go to next file and compare name to see
 			//if point is in file name.
-		}
 }
+
 
