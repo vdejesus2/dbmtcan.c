@@ -50,6 +50,7 @@ pthread_mutex_t lock;
 
 int datagrabber(FILE *fptr, double *storage);
 void* scann(void *);
+void mrgCluster(char fileNames[][100],int numOfiles);
 
  
 int main(int argc, char *argv[]){
@@ -116,7 +117,7 @@ int main(int argc, char *argv[]){
                         exit(1);
         	}
 
-                outPtr = fopen(argv[2],"a");
+                outPtr = fopen(argv[2],"w+");
                 if(!outPtr)
 		{ //if error appending
                         perror("File could not opened for writing:");
@@ -186,7 +187,7 @@ int main(int argc, char *argv[]){
 	
 	}
 	puts("scan complete");	
-
+	mrgCluster(names,tharg);	
         fclose(outPtr); //closes write file
 	fclose(inPtr);
 	sem_destroy(&holdtrue);
@@ -240,7 +241,7 @@ void* scann(void *jobs)
 {
 	puts("thread going");
 	double x,y,x2,y2,distance,z, tempy, tempx, *temptr;
-        int i,pointcount;
+        int i,pointcount=0;
 
 	pthread_mutex_lock(&lock);
 
@@ -266,7 +267,7 @@ void* scann(void *jobs)
 	printf("File name = %s\n",fname);	
 
 
-	FILE *fiptr = fopen(fname,"a");
+	FILE *fiptr = fopen(fname,"w");
         if(!fiptr)
         { //if error appending
         	perror("File could not open for writing:");
@@ -274,23 +275,23 @@ void* scann(void *jobs)
         }
 
 
-//	printf("storage2= %.02lf\n",*storage2);
+//	printf("storage2= %.02lf\n",*storage2);		//debugging
 
 	storage2 = Initmem; 
         for(i=0;i < (sizes);(i+=2))
         {
 		x2=*(storage2+i);
-//                printf("%.02f\n",x2);
+//                printf("%.02f\n",x2);		//debugging
 		y2=*(storage2+(i+1));
-//                printf("%.02f\n",y2);
+//                printf("%.02f\n",y2);		//debugging
 		
 		tempy= abs(y2-y);
 		tempx= abs(x2-x);
                 z= tempy*tempy+tempx*tempx;
-//		printf("%.02f\n",z);
+//		printf("%.02f\n",z);		//debugging
                 distance = sqrt(z);
-//                printf("%.02f\n",distance);
-//                printf("%.02f\n",epsmin);
+//                printf("%.02f\n",distance);		//debugging
+//                printf("%.02f\n",epsmin);		//debugging
                 printf("i= %d size= %d current point=(%.02lf,%.02lf)\n",i,sizes,x,y);
 		if(distance < epsmin)
                 {
@@ -304,8 +305,8 @@ void* scann(void *jobs)
 //function to add number of points to the end of the filename.
 	int ret;
 	char *stringb;
-        printf("mnpts= %d\n",mnpoints);
-	asprintf(&stringb, "%d", mnpoints);
+        printf("mnpts= %d currentPts= %d\n",mnpoints,pointcount);
+	asprintf(&stringb, "%d", pointcount);
         printf("%s\n", stringb);
         char oldname[PATH_MAX];
 	strcpy(oldname,fname);
@@ -320,25 +321,25 @@ void* scann(void *jobs)
    	{
      		printf("\nError: unable to rename the file\n");
    	}
-
-//char newname[PATH_MAX];
-//snprintf(newname, PATH_MAX, "file_%d.txt", min);
-//FILE * f = fopen(fname, "w");
-//end of filname minpoints function
+	free (stringb);
 
 }
 
-/*
-void mrgCluster(char *fileNames[][],int numOfiles)
+
+void mrgCluster(char fileNames[][100],int numOfiles)
 {
-		int i,j,b=0,clstpts;
+		puts("Merge started...\n");
+		int i,j=0,b=0,clstpts;
 		char c;
 		double k,l,tempk,templ;
-		char cluster[100]= '\0';
-		char clusterb[100]= '\0';
+		char cluster[100];
+		char clusterb[100];
+
 		for(i=0;i<numOfiles;i++)
 		{
-			cluster=*fileNames[i];
+//			cluster= fileNames[i];			
+			strcpy(cluster,fileNames[i]);
+			printf("cluster name= %s\n",cluster);
 			//need to add number of points in file cluster
 			//will be the number of times to run next loop.
 				
@@ -355,9 +356,12 @@ void mrgCluster(char *fileNames[][],int numOfiles)
 				{
 					if(b==0)
 					{
+						
+						break;
+/*				
 						tempk= (double)c - '0';
 						//need recursion here xx.xx
-						while (c= cluster[++j]) != '\0')
+						while ((c= cluster[++j]) != '\0')
 						{
 							if(c=='_')
 			                        	{
@@ -367,12 +371,12 @@ void mrgCluster(char *fileNames[][],int numOfiles)
                         				else if(isalpha(c))
 							{
                                 				b==3;
-								while (c= cluster[++j]) != '\0')
+								while ((c= cluster[++j]) != '\0')
                                                 		{
                                                         		if(isalpha(c))
                                                                 		break;
                                                         		else if(isdigit(c))
-                                                        		}
+                                                        		{
 										clstpts=((double)c - '0');
                                                         		}
                                                         		else
@@ -389,22 +393,23 @@ void mrgCluster(char *fileNames[][],int numOfiles)
 							else
 								break;
 						}
+*/
 					}
 					else if(b==1)
 					{
 						templ= (double)c - '0';
 						//need recursion here xx.xx
-					 	while (c= cluster[++j]) != '\0')
+					 	while ((c= cluster[++j]) != '\0')
                                         	{
                                                 	if(isalpha(c))
 							{
 								b==3;
-                                                                while (c= cluster[++j]) != '\0')
+                                                                while ((c= cluster[++j]) != '\0')
                                                                 {
                                                                         if(isalpha(c))
                                                                                 break;
                                                                         else if(isdigit(c))
-                                                                        }
+                                                                        {
                                                                                 clstpts=((double)c - '0');
                                                                         }
                                                                         else
@@ -422,11 +427,14 @@ void mrgCluster(char *fileNames[][],int numOfiles)
                                                         	break;
                                         	}
 					}
-					
+					else
+						break;
+				}				
+				
+				printf("# of Points= %d",clstpts);
 			}
 			//need to go to next file and compare name to see
 			//if point is in file name.
 		}
-	}
 }
-*/
+
