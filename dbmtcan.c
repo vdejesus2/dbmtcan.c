@@ -3,6 +3,11 @@
 //Dominates on any multicore machine  ***coming soon***
 
 /*Program notes:
+Version 19
+complete working version
+need to improve efficiency and remove duplicates
+./a.out infileb.txt outfile 14 2 1
+
 
 Version 16.0
 working on merge function.
@@ -337,6 +342,8 @@ void* scann(void *jobs)
 	free (stringb);
 	free (stringx);
 	free (stringy);
+
+	fclose(fiptr);
 }
 
 
@@ -361,94 +368,88 @@ void mrgCluster(char fileNames[][100],int numOfiles)
 		k = handoff[0];
 		l = handoff[1];
 		clstptsA = handoff[2];	
-		printf("This %s\n",clusterb);
-		master = fopen(clusterb,"r+");
-                if(!master)
-                { //if error appending
-                        perror("File could not open for reading:");
-                        exit(1);
-                }
-		printf("about to start while\n");
-		
-//WE ARE HERE-------->>>>>>>> while loop does not start?
-
-		while((c=fgetc(master)) != EOF)
-		{
-                	printf("start = %c\n",c);
-			if(c=='\n')
-                        {
-                	        p1 = 0;
-                        	p2 = 0;
-                        }
-                        else if(c=='x')
-                        {
-                        	printf("step 1 = %c\n",c);
-				c=fgetc(master);
-                                if (c == '_')
-                                {
-                                	c=fgetc(master);
-					c = fgetc(master);
-                                        printf("step 2 = %c\n",c);
-					p1 = (double)c - '0';
-                                        c=fgetc(master);
-                                        if (isdigit(c))
-                                        {
-                                        	p1 = 10*p1 + ((double)c - '0');
-                                        }
-                                                //need recursion to go higher than double digits
-                                }
-			}
-                        else if(c=='y')
-                        {
-                        	c=fgetc(master);
-                                printf("step 3 = %c\n",c);
-				if (c == '_')
-                                {
-                                	c = fgetc(master);
-                                        c = fgetc(master);
-					printf("step 4 = %c\n",c);
-					p2 = (double)c - '0';
-                                        c=fgetc(master);
-                                        if (isdigit(c))
-                                        {
-                                        	p2 = 10*p2 + ((double)c - '0');
-                                        }
-                                                //need recursion to go higher than double digits
-				}
-				printf("p1=%f p2=%f\n",p1,p2);
-				for(j=h;j<(numOfiles-h);j++)
-                		{
-                        		strcpy(clusterc,fileNames[j]);
-                        		printf("%s\n",clusterc);
-                        		//retrieve dd_ddcluster and # of points in cluster
-                        		filenames(clusterc,handoff);
-                        		tempk = handoff[0];
-                        		templ = handoff[1];
-                        		clstptsB = handoff[2];
-
-                        		printf("tempk= %.2lf\n",tempk);
-                        		printf("templ= %.2lf\n",templ);
-                        		printf("clstpts= %.2lf\n",clstptsB);
-
-                        		//need to go to next file and compare name to see
-                        		//if point is in file name.
-
-                        		tempk=0;
-                        		templ=0;
-                        		clstptsB=0;
-                			
-                                	if((p1 == tempk) && (p2 == templ))
+		//printf("This %s\n",clusterb);
+		master = fopen(clusterb,"r");
+                if(master)
+                { 
+			while((c=fgetc(master)) != EOF)
+			{
+                		//printf("start = %c\n",c);
+				if(c=='\n')
+                        	{
+                	        	p1 = 0;
+                        		p2 = 0;
+                        	}
+                        	else if(c=='x')
+                        	{
+                        		//printf("step 1 = %c\n",c);
+					c=fgetc(master);
+                                	if (c == '_')
                                 	{
-                                	//	appendFile(clusterb,clusterc);
+                                		c=fgetc(master);
+						c = fgetc(master);
+                                        	//printf("step 2 = %c\n",c);
+						p1 = (double)c - '0';
+                                        	c=fgetc(master);
+                                        	if (isdigit(c))
+                                        	{
+                                        		p1 = 10*p1 + ((double)c - '0');
+                                        	}
+                                                //need recursion to go higher than double digits
                                 	}
 				}
+                        	else if(c=='y')
+                        	{
+                        		c=fgetc(master);
+                                	//printf("step 3 = %c\n",c);
+					if (c == '_')
+                                	{
+                                		c = fgetc(master);
+                                        	c = fgetc(master);
+						//printf("step 4 = %c\n",c);
+						p2 = (double)c - '0';
+                                        	c=fgetc(master);
+                                        	if (isdigit(c))
+                                        	{
+                                        		p2 = 10*p2 + ((double)c - '0');
+                                        	}
+                                                //need recursion to go higher than double digits
+					
+						printf("p1=%f p2=%f\n",p1,p2);
+						for(j=h;j<=(numOfiles-h);j++)
+                				{
+                        				strcpy(clusterc,fileNames[j]);
+                        				printf("%s\n",clusterc);
+                        				//retrieve dd_ddcluster and # of points in cluster
+                        				filenames(clusterc,handoff);
+                        				tempk = handoff[0];
+                        				templ = handoff[1];
+                        				clstptsB = handoff[2];
 
+                        				//printf("tempk= %.2lf\n",tempk);
+                        				//printf("templ= %.2lf\n",templ);
+                        				//printf("clstpts= %.2lf\n",clstptsB);
+
+                                			if((p1 == tempk) && (p2 == templ))
+                                			{
+                                				puts("merge request");
+								appendFile(clusterc,clusterb);
+								unlink(clusterc);
+                                			}
+							tempk=0;
+                                        		templ=0;
+                                        		clstptsB=0;
+						}
+					}
+
+				}
+                        	else
+                        	{
+                        		//printf("step else = %c\n",c);
+                        	}
 			}
-                        else
-                        {
-                        	printf("step else = %c\n",c);
-                        }
-		}		
+			fclose(master);		
+		}
 	}
 }
 
@@ -562,10 +563,10 @@ void filenames(char cluster[],double *values)
 
 void appendFile(char fileA[100], char fileB[100])
 {
-	printf("Starting system call");	
+	printf("Starting system call\n");	
 	char systemCall[255];
 	char commands[10]="cat ";
-	strcat(systemCall,commands);
+	strcpy(systemCall,commands);
 	strcat(systemCall,fileA);
 	strcpy(commands," >> ");
 	strcat(systemCall,commands);
