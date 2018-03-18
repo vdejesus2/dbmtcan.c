@@ -1,6 +1,6 @@
 //Garrett Poppe
 //DBMTCAN Density Based Multi Threaded Clustering Algorithm with Noise
-//Dominates on any multicore machine
+//Dominates on any multicore machine  ***coming soon***
 
 /*Program notes:
 
@@ -29,6 +29,7 @@ compile with:
 #include <string.h>
 #include <error.h>
 #include <ctype.h>
+#include <semaphore.h>
 #define PATH_MAX 25
 #define sSize 40
 
@@ -44,7 +45,7 @@ struct job{
         int elements;
 };
 
-
+sem_t holdtrue; 
 pthread_mutex_t lock;
 
 int datagrabber(FILE *fptr, double *storage);
@@ -55,15 +56,23 @@ int main(int argc, char *argv[]){
         FILE *inPtr;    //pointer for file that is read from
         FILE *outPtr;   //pointer for file that is written to
         int check,i,G;
-	int tharg,tharg2,mnpts;
+	int tharg,tharg2;
+	int mnpts = atoi(argv[5]);;
 	tharg= atoi(argv[3]);
+	
 	double *memory, *initMem;
-	double EPSmin=0;
+	double EPSmin= (double)(atoi(argv[4]));
 	tharg2= 2*tharg;
 	char str1[20];
 	strcpy(str1,argv[2]);
 	char str2[20];
 	pthread_t tid[tharg];
+	
+	if(sem_init(&holdtrue,1,1)<0)
+	{
+		perror("semaphore initialization");
+		exit(0);
+	}
 
 	int iret1, iret2;
 	if (pthread_mutex_init(&lock, NULL) != 0)
@@ -72,15 +81,16 @@ int main(int argc, char *argv[]){
         	return 1;
 	}
 
+
 	char names[tharg][100];
 	for(i = 0; i < tharg; ++i )
     	{	
 		char *string;
                 asprintf(&string,"%d",i);
-                printf("%s\n", string);
+//                printf("%s\n", string);	//debugging
 		strcat(string,str1);
 		strcpy(names[i],string);
-		printf("%s\n",names[i]);
+//		printf("%s\n",names[i]);	//debugging
 		free (string);
 	}
 
@@ -92,10 +102,10 @@ int main(int argc, char *argv[]){
 	
 	memory = calloc(tharg2, sizeof(double)+1);
 	initMem = &memory[0];
-	printf("arg3= %d\n",tharg);
-        if(argc!=4)
+        
+	if(argc!=6)
 	{ //4 arguments check
-		puts("Usage: infile outfile size");
+		puts("Usage: ./a.out infile outfile size epsmin mnpnts");
         }
 	else
 	{ //check if files exist
@@ -106,7 +116,7 @@ int main(int argc, char *argv[]){
                         exit(1);
         	}
 
-                outPtr = fopen(argv[2],"w+");
+                outPtr = fopen(argv[2],"a");
                 if(!outPtr)
 		{ //if error appending
                         perror("File could not opened for writing:");
@@ -133,22 +143,23 @@ int main(int argc, char *argv[]){
 	else
 		printf("The sky is falling\n");
 
-	printf("check = %d \n",check);
-	printf("tharg = %d \n",tharg);
-
+	printf("Points in dataset = %d \n",check);
+	printf("Points specified = %d \n",tharg);
+/*
 	printf("Enter EPSmin: ");
 	scanf("%lf",&EPSmin);
 	//printf("memory[0]= %lf\n",*memory); //error check
 	
 	printf("Enter MinPoints: ");
         scanf("%d",&mnpts);
-
+*/
 	struct job *jobptr = malloc(sizeof *jobptr);
 
 	
 	for(i=0;i< tharg;i++)
 	{
 		
+		sem_wait(&holdtrue);	
 		if (jobptr != NULL)
 		{
 			puts("starting thread");
@@ -166,6 +177,7 @@ int main(int argc, char *argv[]){
                 		exit(EXIT_FAILURE);
         		}
 		}
+		
 	}
 	int h;
 	for(h=0;h<tharg;h++)
@@ -177,6 +189,7 @@ int main(int argc, char *argv[]){
 
         fclose(outPtr); //closes write file
 	fclose(inPtr);
+	sem_destroy(&holdtrue);
 	free (memory);
 	free (jobptr);
 	pthread_mutex_destroy(&lock);
@@ -241,7 +254,9 @@ void* scann(void *jobs)
 	int mnpoints=jobptr2->MinPts;
 	int sizes=jobptr2->elements;
 	
+	sem_post(&holdtrue);	
 	pthread_mutex_unlock(&lock);	
+	
 	x=*storage2;
         printf("%.02f\n",x);
         y=*(storage2+1);
@@ -251,7 +266,7 @@ void* scann(void *jobs)
 	printf("File name = %s\n",fname);	
 
 
-	FILE *fiptr = fopen(fname,"w");
+	FILE *fiptr = fopen(fname,"a");
         if(!fiptr)
         { //if error appending
         	perror("File could not open for writing:");
@@ -299,11 +314,11 @@ void* scann(void *jobs)
 	ret = rename(oldname, fname);
 	if(ret == 0) 
 	{
-		printf("File renamed successfully");
+		printf("File renamed successfully\n");
 	}
    	else 
    	{
-     		printf("Error: unable to rename the file");
+     		printf("\nError: unable to rename the file\n");
    	}
 
 //char newname[PATH_MAX];
