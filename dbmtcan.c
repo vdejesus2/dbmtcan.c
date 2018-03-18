@@ -3,9 +3,21 @@
 //Dominates on any multicore machine
 
 /*Program notes:
-runs when using gdb except the number of files created is one less than normal.
-need to add abs value for distances.
-change file naming scheme and use arg 2.
+
+Version 10.0
+working on merge function
+
+version 9
+compiles, executes and outputs all files but the first in gdb. 
+(had problems when running ./a.out infile.txt oufile 11
+
+run with: 
+"gdb --args a.out infile.txt outfile 11"
+
+compile with: 
+"gcc dbmtcanv9.c -lm -lpthread"
+
+
 */
 
 
@@ -215,7 +227,7 @@ void* scann(void *jobs)
 {
 	puts("thread going");
 	double x,y,x2,y2,distance,z, tempy, tempx, *temptr;
-        int i;
+        int i,pointcount;
 
 	pthread_mutex_lock(&lock);
 
@@ -269,15 +281,16 @@ void* scann(void *jobs)
                 {
                         fprintf(fiptr,"x(%lf),y(%lf) -> x'(%lf),y'(%lf) = %lf\n",x,y,x2,y2,distance);
                         printf("x(%.02lf),y(%.02lf) -> x'(%.02lf),y'(%.02lf) = %.03lf\n",x,y,x2,y2,distance);
-                	mnpoints++;
+                	pointcount++;
 		}
         }
 	
-/*	
+	
 //function to add number of points to the end of the filename.
 	int ret;
 	char *stringb;
-        asprintf(&stringb, "%d", mnpoints);
+        printf("mnpts= %d\n",mnpoints);
+	asprintf(&stringb, "%d", mnpoints);
         printf("%s\n", stringb);
         char oldname[PATH_MAX];
 	strcpy(oldname,fname);
@@ -292,15 +305,11 @@ void* scann(void *jobs)
    	{
      		printf("Error: unable to rename the file");
    	}
-*/
+
 //char newname[PATH_MAX];
 //snprintf(newname, PATH_MAX, "file_%d.txt", min);
 //FILE * f = fopen(fname, "w");
 //end of filname minpoints function
-//	free(storage2);
-//        free(jobs);
-//        free(fname);
-//        fclose(fiptr); //closes write file
 
 }
 
