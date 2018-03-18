@@ -6,9 +6,12 @@
 #include <stdlib.h>
 #include <math.h>
 #include <pthread.h>
+#include <string.h>
+#include <error.h>
 
 struct job{
-        FILE *fileptr;
+//        FILE *fileptr;
+	char *filename;
         double *jobstorage;
         double EpsMin;
         int elements;
@@ -29,16 +32,44 @@ int main(int argc, char *argv[]){
 	double *memory;
 	double EPSmin=0;
 	tharg2= 2*tharg;
-	
-	pthread_t tid[1];
+	char str1[20]="outfile";
+//	strcpy(str1,"outfile");
+	char str2[20];
+	pthread_t tid[tharg];
 	int iret1, iret2;
-/*	
-    for (int i = 0; i < 2; i++) {
-        pthread_create(&tid[i], NULL, routine, NULL);
-    }
-    for (int i = 0; i < 2; i++)
-       pthread_join(tid[i], NULL);
+	
+	char* names[tharg];
+	for(i = 0; i < tharg; ++i )
+    	{	
+		names[i] = malloc( 256 * sizeof(char)  ); // or some other max value
+		
+		char *string;
+                asprintf(&string, "%d", i);
+                printf("%s\n", string);
+		names[i]=strcpy(str1,string);
+	//	asprintf(names[i], "%d", i);		
+		printf("%s\n",names[i]);
+/*
+                strcpy(str2,string);
+                printf("%s\n", str2);
+
+                char * new_str ;
+                if((new_str = malloc(strlen(str1)+strlen(str2)+1)) != NULL){
+                        new_str[0] = '\0';   // ensures the memory is an empty string
+                        strcat(new_str,str1);
+                        strcat(new_str,str2);
+                } else {
+                        fprintf(stderr,"malloc failed!\n");
+                        // exit?
+                }
+                names[i]= new_str;
+		free(string);
+		free(new_str);
 */
+	}
+
+
+	
 	memory = calloc(tharg2, sizeof(double));
 	printf("arg3= %d\n",tharg);
         if(argc!=4)
@@ -81,34 +112,33 @@ int main(int argc, char *argv[]){
 	printf("Enter EPSmin: ");
 	scanf("%lf",&EPSmin);
 	//printf("memory[0]= %lf\n",*memory); //error check
-	//scann(outPtr,memory,EPSmin,(check*2));		
-/*	
-	struct job{
-        FILE *fileptr;
-        double *jobstorage;
-        double EpsMin;
-        int elements;
-	};
-*/
+
 	
 	struct job *jobptr = malloc(sizeof *jobptr);
+	for(i=0;i<tharg;i++)
+	{
 
 	if (jobptr != NULL)
 	{
 		puts("starting thread");
-		jobptr->fileptr = inPtr;
-	        jobptr->jobstorage = memory;
+		printf("threadname= %s\n",names[i]);
+		jobptr->filename = names[i];
+	        jobptr->jobstorage = (memory+(2*i));
 	        jobptr->EpsMin = EPSmin;
-	        jobptr->elements = tharg2;
-		iret1 = pthread_create( &tid[0], NULL, scann, jobptr);
+	        jobptr->elements = 2*(tharg-i);
+		iret1 = pthread_create( &tid[i], NULL, scann, jobptr);
         	if(iret1)
         	{
                 	fprintf(stderr, "Error - pthread_create() return code: %d\n",iret1);
                 	exit(EXIT_FAILURE);
         	}
 	}
-
-	pthread_join(tid[0], NULL);
+	}
+	int h;
+	for(h=0;h<tharg;h++)
+	{
+		pthread_join(tid[h], NULL);
+	}
 	puts("scan complete");	
 
         fclose(outPtr); //closes write file
@@ -163,11 +193,21 @@ void* scann(void *jobs)
 	puts("thread going");
 	struct job *jobptr2 = jobs;	
 
-	FILE *fiptr=jobptr2->fileptr;
+//	FILE *fiptr=jobptr2->fileptr;
+	char *fname=jobptr2->filename;
 	double *storage2=jobptr2->jobstorage;
 	double epsmin=jobptr2->EpsMin;
 	int sizes=jobptr2->elements;
 	
+	printf("File name = %s\n",fname);	
+	FILE *fiptr = fopen(fname,"w+");
+        if(!fiptr)
+        { //if error appending
+        	perror("File could not opened for writing:");
+                exit(1);
+        }
+
+
 	printf("storage2= %.02lf\n",*storage2);
 	double x,y,x2,y2,distance,z, tempy, tempx;
         int i;
@@ -199,5 +239,6 @@ void* scann(void *jobs)
 	
 	free(storage2);
 	free(jobs);	
+	free(fname);
 	fclose(fiptr); //closes write file
 }	
