@@ -2,13 +2,26 @@
 //DBMTCAN Density Based Multi Threaded Clustering Algorithm with Noise
 //Dominates on any multicore machine
 
+/*Program notes:
+runs when using gdb except the number of files created is one less than normal.
+need to add abs value for distances.
+change file naming scheme and use arg 2.
+*/
+
+
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
 #include <pthread.h>
 #include <string.h>
 #include <error.h>
+#include <ctype.h>
+#define PATH_MAX 25
+#define sSize 40
 
+
+//Variables for thread
 struct job{
 //        FILE *fileptr;
 	char *filename;
@@ -43,12 +56,12 @@ int main(int argc, char *argv[]){
 	for(i = 0; i < tharg; ++i )
     	{	
 		char *string;
-		string[0] = '\0';
-                asprintf(&string, "%d", i);
+                asprintf(&string,"%d",i);
                 printf("%s\n", string);
 		strcat(string,str1);
 		strcpy(names[i],string);
 		printf("%s\n",names[i]);
+		free (string);
 	}
 
 	for (i=0;i<tharg;i++)
@@ -57,14 +70,13 @@ int main(int argc, char *argv[]){
         }
 
 	
-	memory = calloc(tharg2, sizeof(double));
+	memory = calloc(tharg2, sizeof(double)+1);
 	printf("arg3= %d\n",tharg);
         if(argc!=4)
 	{ //4 arguments check
 		puts("Usage: infile outfile size");
         }
-
-        else
+	else
 	{ //check if files exist
                 inPtr = fopen(argv[1],"r");
                 if(!inPtr)
@@ -115,7 +127,7 @@ int main(int argc, char *argv[]){
 	        	jobptr->jobstorage = (memory+(2*i));
 	        	jobptr->EpsMin = EPSmin;
 	        	jobptr->elements = 2*(tharg-i);
-			jobptr->MinPnts = mnpts;
+			jobptr->MinPts = mnpts;
 			iret1 = pthread_create( &tid[i], NULL, scann, jobptr);
         		if(iret1)
         		{
@@ -134,7 +146,7 @@ int main(int argc, char *argv[]){
         fclose(outPtr); //closes write file
 	fclose(inPtr);
 	free (memory);
-        free (jobptr);
+	free (jobptr);
 	return 0;
 }
 
@@ -193,10 +205,12 @@ void* scann(void *jobs)
 	pthread_mutex_unlock(&lock);
 	
 	printf("File name = %s\n",fname);	
+
+
 	FILE *fiptr = fopen(fname,"w");
         if(!fiptr)
         { //if error appending
-        	perror("File could not opened for writing:");
+        	perror("File could not open for writing:");
                 exit(1);
         }
 
@@ -237,19 +251,15 @@ void* scann(void *jobs)
 		}
         }
 	
-	free(storage2);
-	free(jobs);	
-	free(fname);
-	fclose(fiptr); //closes write file
-	
+/*	
 //function to add number of points to the end of the filename.
 	int ret;
-	char *string;
-        string[0] = '\0';
-        asprintf(&string, "%d", mnpoints);
-        printf("%s\n", string);
-        char oldname[] = fname;
-	strcat(fname,string);
+	char *stringb;
+        asprintf(&stringb, "%d", mnpoints);
+        printf("%s\n", stringb);
+        char oldname[PATH_MAX];
+	strcpy(oldname,fname);
+	strcat(fname, stringb);
 	printf("%s\n", fname);
 	ret = rename(oldname, fname);
 	if(ret == 0) 
@@ -260,10 +270,19 @@ void* scann(void *jobs)
    	{
      		printf("Error: unable to rename the file");
    	}
+*/
+//char newname[PATH_MAX];
+//snprintf(newname, PATH_MAX, "file_%d.txt", min);
+//FILE * f = fopen(fname, "w");
 //end of filname minpoints function
+//	free(storage2);
+//        free(jobs);
+//        free(fname);
+//        fclose(fiptr); //closes write file
+
 }
 
-
+/*
 void mrgCluster(char *fileNames[][],int numOfiles)
 {
 		int i,j,b=0,clstpts;
@@ -364,3 +383,4 @@ void mrgCluster(char *fileNames[][],int numOfiles)
 		}
 	}
 }
+*/
