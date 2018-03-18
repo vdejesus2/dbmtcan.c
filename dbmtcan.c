@@ -355,37 +355,37 @@ void mrgCluster(char fileNames[][100],int numOfiles)
 			//will be the number of times to run next loop.
 				
 			while( (c= cluster[j]) != '\0')
+			{
         	        	if(c=='_')
                 		{
                         		b++;
                         		j++;
-					printf("j= %d\n",j);
+					printf("j=_ %d\n",j);
                 		}
                 		else if(isalpha(c))
 				{
                         		j++;
-//					printf("j= %d\n",j);
+					printf("j= %d\n",j);
                 		}
 				else if(isdigit(c))
 				{
 					if(b==0)
 					{
-						j++;	
-						tempk= (double)c - '0';		//I think i was trying to capture
-										//the front and back of the filename.
-										//I need to capture core point value
-										//in filename. 
+						tempk= (double)c - '0';	
 						//need recursion here xx.xx
 						while ((c= cluster[++j]) != '\0')
 						{
 							if(c=='_')
 			                        	{
                         			        	b++;
-                                				break;
+								j++;
+                                				printf("j=__ %d b= %d\n",j,b);
+								break;
                         				}
                         				else if(isalpha(c))
 							{
 								puts("wrong file format-> dd_ddfilename_dd");
+								printf("b= %d\n",b);
 								break;
 							}
 							else if(isdigit(c))
@@ -407,7 +407,6 @@ void mrgCluster(char fileNames[][100],int numOfiles)
                                         	{
 							if(isalpha(c))
 							{
-                                                        	b++;
 								break;
 							}
                                                 	else if(isdigit(c))
@@ -429,7 +428,8 @@ void mrgCluster(char fileNames[][100],int numOfiles)
                                                         if(isalpha(c))
                                                         {
                                                                 puts("wrong file format-> dd_ddfilename_dd");
-                                                                break;
+                                                                printf("j= %d b= %d\n",j,b);
+								break;
                                                         }
                                                         else if(isdigit(c))
                                                         {
@@ -444,6 +444,7 @@ void mrgCluster(char fileNames[][100],int numOfiles)
 					else
 					{	
 						puts("");
+						printf("j= %d b= %d\n",j,b);
 						j++;
 					}		
 				}				
@@ -459,6 +460,7 @@ void mrgCluster(char fileNames[][100],int numOfiles)
 			clstpts=0;
 			//need to go to next file and compare name to see
 			//if point is in file name.
+	}
 }
 
 
