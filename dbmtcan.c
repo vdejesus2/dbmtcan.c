@@ -5,7 +5,7 @@
 /*Program notes:
 need to run against dataset.
 included a CHAMELEON set "newdata.txt"
-./a.out newdata.txt 8000 100 3
+./a.out newdata.txt ouptut 788 100 3
 not sure about epsmin and points
 
 
@@ -51,7 +51,7 @@ compile with:
 #include <semaphore.h>
 #define PATH_MAX 25
 #define sSize 40
-
+#include <time.h>
 
 //Variables for thread
 struct job{
@@ -72,6 +72,7 @@ void* scann(void *);
 void mrgCluster(char fileNames[][100],int numOfiles);
 void filenames(char cluster[],double *values);
 void appendFile(char fileA[100], char fileB[100]);
+int printTime(void);
  
 int main(int argc, char *argv[]){
         FILE *inPtr;    //pointer for file that is read from
@@ -80,7 +81,7 @@ int main(int argc, char *argv[]){
 	int tharg,tharg2;
 	int mnpts = atoi(argv[5]);
 	tharg= atoi(argv[3]);
-	
+	int timer=0;
 	double *memory, *initMem;
 	double EPSmin= (double)(atoi(argv[4]));
 	tharg2= 2*tharg;
@@ -88,7 +89,8 @@ int main(int argc, char *argv[]){
 	strcpy(str1,argv[2]);
 	char str2[20];
 	pthread_t tid[tharg];
-	
+	timer=printTime();
+		
 	if(sem_init(&holdtrue,1,1)<0)
 	{
 		perror("semaphore initialization");
@@ -114,12 +116,12 @@ int main(int argc, char *argv[]){
 //		printf("%s\n",names[i]);	//debugging
 //		free (string);
 	}
-
+/*
 	for (i=0;i<tharg;i++)
         {
         	printf("names[%d]= %s\n",i,names[i]);
         }
-
+*/
 	
 	memory = calloc(tharg2, sizeof(double)+1);
 	initMem = &memory[0];
@@ -214,6 +216,8 @@ int main(int argc, char *argv[]){
 	free (memory);
 	free (jobptr);
 	pthread_mutex_destroy(&lock);
+	timer = printTime() - timer;
+	printf("timer= %d\n",timer);
 	return 0;
 }
 
@@ -278,7 +282,7 @@ int datagrabber(FILE *fptr, double *storage)
 				*(storage+j)= temp;
 				
 			}
-			printf("storage = %lf\n",*(storage+j)); //error check
+//			printf("storage = %lf\n",*(storage+j)); //error check
 		}
         }
 	return i;
@@ -306,9 +310,9 @@ void* scann(void *jobs)
 	pthread_mutex_unlock(&lock);	
 	
 	x=*storage2;
-        printf("%.02f\n",x);
+//        printf("%.02f\n",x);
         y=*(storage2+1);
-        printf("%.02f\n",y);
+//        printf("%.02f\n",y);
 
         char *stringx;
         char *stringy;
@@ -321,7 +325,7 @@ void* scann(void *jobs)
 	strcat(oldname,"_");
         strcat(oldname,stringy);
         strcat(oldname,fname);
-        printf("%s\n", oldname);
+//        printf("%s\n", oldname);
 
 	FILE *fiptr = fopen(oldname,"w");
         if(!fiptr)
@@ -348,11 +352,11 @@ void* scann(void *jobs)
                 distance = sqrt(z);
 //                printf("%.02f\n",distance);		//debugging
 //                printf("%.02f\n",epsmin);		//debugging
-                printf("i= %d size= %d current point=(%.02lf,%.02lf)\n",i,sizes,x,y);
+//                printf("i= %d size= %d current point=(%.02lf,%.02lf)\n",i,sizes,x,y);
 		if(distance < epsmin)
                 {
                         fprintf(fiptr,"x(%0.0lf),y(%0.0lf) -> x_(%0.0lf),y_(%0.0lf) = %lf\n",x,y,x2,y2,distance);
-                        printf("x(%.02lf),y(%.02lf) -> x_(%.02lf),y_(%.02lf) = %.03lf\n",x,y,x2,y2,distance);
+//                        printf("x(%.02lf),y(%.02lf) -> x_(%.02lf),y_(%.02lf) = %.03lf\n",x,y,x2,y2,distance);
                 	pointcount++;
 		}
         }
@@ -363,14 +367,14 @@ void* scann(void *jobs)
 	char *stringb;
 	char *stringSep;
 	char newname[PATH_MAX];
-        printf("mnpts= %d currentPts= %d\n",mnpoints,pointcount);
+//        printf("mnpts= %d currentPts= %d\n",mnpoints,pointcount);
 	asprintf(&stringb, "%d", pointcount);
-        printf("%s\n", stringb);
+//        printf("%s\n", stringb);
 	strcpy(newname,oldname);
 	asprintf(&stringSep,"_");
 	strcat(newname, stringSep);
 	strcat(newname, stringb);
-	printf("%s\n", newname);
+//	printf("%s\n", newname);
 	ret = rename(oldname, newname);
 	if(ret == 0) 
 	{
@@ -468,11 +472,11 @@ void mrgCluster(char fileNames[][100],int numOfiles)
                                         	}
                                                 //need recursion to go higher than double digits
 					
-						printf("p1=%f p2=%f\n",p1,p2);
+//						printf("p1=%f p2=%f\n",p1,p2);
 						for(j=h;j<=(numOfiles-h);j++)
                 				{
                         				strcpy(clusterc,fileNames[j]);
-                        				printf("%s\n",clusterc);
+//                        				printf("%s\n",clusterc);
                         				//retrieve dd_ddcluster and # of points in cluster
                         				filenames(clusterc,handoff);
                         				tempk = handoff[0];
@@ -612,8 +616,8 @@ void filenames(char cluster[],double *values)
                                         }
                                         else
                                         {
-                                                puts("");
-                                                printf("j= %d b= %d\n",j,b);
+//                                               puts("");
+//                                                printf("j= %d b= %d\n",j,b);
 						         j++;
                                         }
                                 }
@@ -628,7 +632,7 @@ void filenames(char cluster[],double *values)
 
 void appendFile(char fileA[100], char fileB[100])
 {
-	printf("Starting system call\n");	
+//	printf("Starting system call\n");	
 	char systemCall[255];
 	char commands[10]="cat ";
 	strcpy(systemCall,commands);
@@ -636,6 +640,18 @@ void appendFile(char fileA[100], char fileB[100])
 	strcpy(commands," >> ");
 	strcat(systemCall,commands);
 	strcat(systemCall,fileB);
-	printf("%s\n",systemCall);
+//	printf("%s\n",systemCall);
 	system(systemCall);
+}
+
+int printTime(void)
+{
+  time_t rawtime;
+  struct tm * timeinfo;
+
+  time ( &rawtime );
+  timeinfo = localtime ( &rawtime );
+  printf ( "Current local time and date: %s", asctime (timeinfo) );
+
+  return rawtime;
 }
