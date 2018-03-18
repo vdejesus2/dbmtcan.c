@@ -3,10 +3,16 @@
 //Dominates on any multicore machine  ***coming soon***
 
 /*Program notes:
-Version 20
-added recursive functions for values larger than 2 digits
-Needs debugging
-./a.out infilec.txt outfile 11 1000 1
+need to run against dataset.
+included a CHAMELEON set "newdata.txt"
+./a.out newdata.txt 8000 100 3
+not sure about epsmin and points
+
+
+Version 21
+removed recursive functions and added loops for values larger than 2 digits
+works.
+./a.out infilec.txt outfile 14 1000 1
 
 Version 19
 complete working version
@@ -24,13 +30,17 @@ run with:
 "./a.out infile.txt outfile 11 epsmin mnpnts"
 
 compile with: 
-"gcc dbmtcanv9.c -lm -lpthread"
+"gcc dbmtcanv21.c -lm -lpthread"
 
 
 */
 
 
 #define _GNU_SOURCE
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -56,15 +66,12 @@ struct job{
 
 sem_t holdtrue; 
 pthread_mutex_t lock;
-int q;
+
 int datagrabber(FILE *fptr, double *storage);
-double getPlaces(char c, double temp, FILE *fptr);
 void* scann(void *);
 void mrgCluster(char fileNames[][100],int numOfiles);
 void filenames(char cluster[],double *values);
 void appendFile(char fileA[100], char fileB[100]);
-double getDigits(char c, double p, FILE *fptr);
-double getDigitsArr(char c, double p, char arr[]);
  
 int main(int argc, char *argv[]){
         FILE *inPtr;    //pointer for file that is read from
@@ -215,16 +222,21 @@ int datagrabber(FILE *fptr, double *storage)
 {
 	int i=0,j=0;
 	double temp=0;
-	char c;
-        while( (c=fgetc(fptr)) != EOF){
+	char c='0';
+        c=fgetc(fptr);
+	while( c != EOF){
                 if(c=='\n')
 		{
                         i++;
 			j++;
+			c=fgetc(fptr);
 		}
 		else if(c==',')
-                        j++;
-                else
+                {
+		        j++;
+			c=fgetc(fptr);
+                }
+		else
 		{	//need to create recursion here xx.xx
 			temp = (double)c - '0';
 			c=fgetc(fptr);
@@ -233,46 +245,44 @@ int datagrabber(FILE *fptr, double *storage)
         	                *(storage+j)= temp;
 				i++;
                 	        j++;
+				c=fgetc(fptr);
 			}
                 	else if(c==',')
 			{
                         	*(storage+j)= temp;
 				j++;
+				c=fgetc(fptr);
                 	}
-			else
+			else if(isdigit(c))
 			{
-				temp = getPlaces(c,temp,fptr);
+				while(isdigit(c))
+				{
+					temp = (temp*10) + (double)c - '0';
+					c=fgetc(fptr);
+				}
+/*				if(c=='.')
+				{
+					c=fgetc(fptr);
+					temp = ((double)c - '0')/10;
+					int u=10;
+					while(isdigit(c))
+					{
+						temp = temp + ((double)c - '0')/(10*u);
+						u*=10;
+						c=fgetc(fptr);
+					}
+				}
+*/
+//				fseek(fptr, -1, SEEK_CUR);
+
 				*(storage+j)= temp;
-				printf("fptr2=%p\n",fptr);
+				
 			}
-			//printf("storage = %lf\n",*(storage+j)); //error check
+			printf("storage = %lf\n",*(storage+j)); //error check
 		}
-		printf("fptr3=%p\n",fptr);
         }
 	return i;
 }
-
-double getPlaces(char c, double temp, FILE *fptr)
-{
-	printf("fptr1=%p\n",fptr);
-	if(c=='\n')
-        {
-                fseek(fptr, -1, SEEK_CUR);
-		return temp;
-        }
-        else if(c==',')
-        {
-                fseek(fptr, -1, SEEK_CUR);
-		return temp;
-        }
-	else
-        {
-        	temp = (temp*10) + (double)c - '0';
-        	c = fgetc(fptr);
-		return getPlaces(c,temp,fptr);
-	}
-}
-
 
 void* scann(void *jobs)
 {
@@ -400,13 +410,13 @@ void mrgCluster(char fileNames[][100],int numOfiles)
 		k = handoff[0];
 		l = handoff[1];
 		clstptsA = handoff[2];	
-		printf("This %s\n",clusterb);
+		//printf("This %s\n",clusterb);
 		master = fopen(clusterb,"r");
                 if(master)
                 { 
 			while((c=fgetc(master)) != EOF)
 			{
-                		printf("start = %c\n",c);
+                		//printf("start = %c\n",c);
 				if(c=='\n')
                         	{
                 	        	p1 = 0;
@@ -414,18 +424,24 @@ void mrgCluster(char fileNames[][100],int numOfiles)
                         	}
                         	else if(c=='x')
                         	{
-                        		printf("step 1 = %c\n",c);
+                        		//printf("step 1 = %c\n",c);
 					c=fgetc(master);
                                 	if (c == '_')
                                 	{
                                 		c=fgetc(master);
 						c = fgetc(master);
-                                        	printf("step 2 = %c\n",c);
+                                        	//printf("step 2 = %c\n",c);
 						p1 = (double)c - '0';
                                         	c=fgetc(master);
                                         	if (isdigit(c))
                                         	{
-                                        		p1 = getDigits(c,p1,master);
+                                			while(isdigit(c))
+                                			{
+                                        			p1 = (p1*10) + ((double)c - '0');
+                                        			c=fgetc(master);
+                                			}
+                                			fseek(master, -1, SEEK_CUR);
+
                                         	}
                                                 //need recursion to go higher than double digits
                                 	}
@@ -433,17 +449,22 @@ void mrgCluster(char fileNames[][100],int numOfiles)
                         	else if(c=='y')
                         	{
                         		c=fgetc(master);
-                                	printf("step 3 = %c\n",c);
+                                	//printf("step 3 = %c\n",c);
 					if (c == '_')
                                 	{
                                 		c = fgetc(master);
                                         	c = fgetc(master);
-						printf("step 4 = %c\n",c);
+						//printf("step 4 = %c\n",c);
 						p2 = (double)c - '0';
                                         	c=fgetc(master);
                                         	if (isdigit(c))
                                         	{
-                                        		p2 = getDigits(c,p2,master);
+                                        		while(isdigit(c))
+                                                        {
+                                                                p2 = (p2*10) + ((double)c - '0');
+                                                                c=fgetc(master);
+                                                        }
+                                                        fseek(master, -1, SEEK_CUR);
                                         	}
                                                 //need recursion to go higher than double digits
 					
@@ -458,7 +479,7 @@ void mrgCluster(char fileNames[][100],int numOfiles)
                         				templ = handoff[1];
                         				clstptsB = handoff[2];
 
-                        				printf("tempk= %.2lf\n",tempk);
+                        				//printf("tempk= %.2lf\n",tempk);
                         				//printf("templ= %.2lf\n",templ);
                         				//printf("clstpts= %.2lf\n",clstptsB);
 
@@ -485,39 +506,22 @@ void mrgCluster(char fileNames[][100],int numOfiles)
 	}
 }
 
-double getDigits(char c, double p, FILE *fptr)
-{
-        if (isdigit(c))
-        {
-        	p = 10*p + ((double)c - '0');
-		c=fgetc(fptr);
-		return getDigits(c,p,fptr);
-        }
-	else
-	{
-		fseek(fptr, -1, SEEK_CUR);
-		return p;
-	}
-}
-
 void filenames(char cluster[],double *values)
 {
 	int j=0,b=0;
 	double templ=0, tempk=0, clstpts=0;
 	char c;
-	q=0;
-	while( (c= cluster[q]) != '\0')
+	while( (c= cluster[j]) != '\0')
                         {
-                                printf("q=%d\ncluster=%s\n",q,cluster);
-				if(c=='_')
+                                if(c=='_')
                                 {
                                         b++;
-                                        q++;
+                                        j++;
 //                                      printf("j=_ %d\n",j);           //debugging
                                 }
                                 else if(isalpha(c))
                                 {
-                                        q++;
+                                        j++;
 //                                      printf("j= %d\n",j);            //debugging
                                 }
                                 else if(isdigit(c))
@@ -526,12 +530,12 @@ void filenames(char cluster[],double *values)
                                         {
                                                 tempk= (double)c - '0';
                                                 //need recursion here xx.xx
-                                                while ((c= cluster[++q]) != '\0')
+                                                while ((c= cluster[++j]) != '\0')
                                                 {
                                                         if(c=='_')
                                                         {
                                                                 b++;
-                                                                q++;
+                                                                j++;
 //                                                              printf("j=__ %d b= %d\n",j,b);          //debugging
                                                                 break;
                                                         }
@@ -543,7 +547,12 @@ void filenames(char cluster[],double *values)
                                                         }
                                                         else if(isdigit(c))
                                                         {
-                                                                tempk=getDigitsArr(c,tempk,cluster);
+                                                                while(isdigit(c))
+                                                        	{
+                                                                	tempk = (tempk*10) + ((double)c - '0');
+                                                                	c = cluster[++j];
+                                                        	}
+								j--;                                                        	
                                                         }
                                                         else
                                                                 break;
@@ -555,7 +564,7 @@ void filenames(char cluster[],double *values)
 						templ= (double)c - '0';
 //                                              printf("templ= %.2lf\n",templ);         //debugging
                                                 //need recursion here xx.xx
-                                                while ((c= cluster[++q]) != '\0')
+                                                while ((c= cluster[++j]) != '\0')
                                                 {
                                                         if(isalpha(c))
                                                         {
@@ -563,7 +572,12 @@ void filenames(char cluster[],double *values)
                                                         }
                                                         else if(isdigit(c))
                                                         {
-                                                                templ= getDigitsArr(c,templ,cluster);
+                                                                while(isdigit(c))
+                                                                {
+                                                                        templ = (templ*10) + ((double)c - '0');
+                                                                        c = cluster[++j];
+                                                                }
+                                                                j--;
                                                         }
                                                         else
                                                                 break;
@@ -574,17 +588,22 @@ void filenames(char cluster[],double *values)
                                                 clstpts= (double)c - '0';
 //                                              printf("templ= %.2lf\n",templ);         //debugging
                                                 //need recursion here xx.xx
-                                                while ((c= cluster[++q]) != '\0')
+                                                while ((c= cluster[++j]) != '\0')
                                                 {
                                                         if(isalpha(c))
                                                         {
                                                                 puts("wrong file format-> dd_ddfilename_dd");
-                                                                printf("j= %d b= %d\n",q,b);
+                                                                printf("j= %d b= %d\n",j,b);
                                                                 break;
                                                         }
                                                         else if(isdigit(c))
                                                         {
-                                                                clstpts= getDigitsArr(c,clstpts,cluster);
+                                                                while(isdigit(c))
+                                                                {
+                                                                        clstpts = (clstpts*10) + ((double)c - '0');
+                                                                        c = cluster[++j];
+                                                                }
+                                                                j--;
                                                         }
                                                         else
                                                                 break;
@@ -594,8 +613,8 @@ void filenames(char cluster[],double *values)
                                         else
                                         {
                                                 puts("");
-                                                printf("j= %d b= %d\n",q,b);
-						         q++;
+                                                printf("j= %d b= %d\n",j,b);
+						         j++;
                                         }
                                 }
 //                              printf("# of Points= %0.2lf\n",templ);          //debugging
@@ -605,21 +624,6 @@ void filenames(char cluster[],double *values)
 			*values = templ;
 			values++;
 			*values = clstpts;
-}
-
-double getDigitsArr(char c, double p, char arr[])
-{
-        if (isdigit(c))
-        {
-                p = 10*p + ((double)c - '0');
-                c = arr[++q];
-                return getDigitsArr(c,p,arr);
-        }
-        else
-        {
-                q--;
-                return p;
-        }
 }
 
 void appendFile(char fileA[100], char fileB[100])
