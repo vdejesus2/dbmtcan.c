@@ -314,11 +314,14 @@ void* scann(void *jobs)
 //function to add number of points to the end of the filename.
 	int ret;
 	char *stringb;
+	char *stringSep;
 	char newname[PATH_MAX];
         printf("mnpts= %d currentPts= %d\n",mnpoints,pointcount);
 	asprintf(&stringb, "%d", pointcount);
         printf("%s\n", stringb);
 	strcpy(newname,oldname);
+	asprintf(&stringSep,"_");
+	strcat(newname, stringSep);
 	strcat(newname, stringb);
 	printf("%s\n", newname);
 	ret = rename(oldname, newname);
@@ -350,14 +353,16 @@ void mrgCluster(char fileNames[][100],int numOfiles)
 	char clusterb[100];
 //file format d_dfilename_dd
 		
-	for(h=0;h<numOfiles;h++)
+	for(h=0;h<numOfiles;h)
 	{
 		strcpy(clusterb,fileNames[h++]);
 		filenames(clusterb,handoff);
 		k = handoff[0];
 		l = handoff[1];
 		clstptsA = handoff[2];	
+		//printf("%s\n",clusterc);
 		strcpy(clusterc,fileNames[h]);
+ 		printf("%s\n",clusterc);
                 //retrieve dd_ddcluster and # of points in cluster
 		filenames(clusterc,handoff); 
 		tempk = handoff[0];
@@ -374,12 +379,19 @@ void mrgCluster(char fileNames[][100],int numOfiles)
                 	perror("File could not open for writing:");
                 	exit(1);
         	}
-			
+		slave = fopen(clusterc,"r");
+                if(!slave)
+                { //if error appending
+                        perror("File could not open for writing:");
+                        exit(1);
+                }
+//WE ARE HERE!!		
+		//need to go to next file and compare name to see
+		//if point is in file name.
+	
 		tempk=0;
 		templ=0;
 		clstptsB=0;
-		//need to go to next file and compare name to see
-		//if point is in file name.
 	}
 }
 
